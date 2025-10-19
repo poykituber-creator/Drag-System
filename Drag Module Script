@@ -1,12 +1,17 @@
 local DragSystem={} -- Main module table that will be returned
+
 DragSystem.__index=DragSystem -- Sets up metatable for object-oriented behavior
 local Players=game:GetService("Players") -- Gets Players service
 local RunService=game:GetService("RunService") -- Gets RunService for frame updates
+
 local UserInputService=game:GetService("UserInputService") -- Gets service for mouse/keyboard input
 local player=Players.LocalPlayer -- Gets the local player
 local mouse=player:GetMouse() -- Gets mouse object for cursor position
 local camera=workspace.CurrentCamera -- Gets current camera reference
 local DragConfig={} -- Configuration table for drag settings
+
+
+
 DragConfig.MaxDistance=15 -- Maximum distance player can drag objects
 DragConfig.MinDistance=3 -- Minimum distance to keep objects from camera
 DragConfig.HeightOffset=2 -- Height above surfaces when placing objects
@@ -16,17 +21,23 @@ DragConfig.HighlightThickness=0.05 -- Thickness of selection box lines
 DragConfig.SnapToGrid=false -- Whether positions snap to grid
 DragConfig.GridSize=1 -- Size of grid cells if snapping enabled
 DragConfig.DebugMode=false -- Toggle for debug output
+
+
+
 local Maid={} -- Maid class for cleanup management
 Maid.__index=Maid -- Metatable setup
 function Maid.new() -- Creates new Maid instance
 	local self=setmetatable({_tasks={}},Maid) -- Initializes task storage table
 	return self
 end
+
 function Maid:Give(task) -- Adds a cleanup task to the maid
 	if task then
 		table.insert(self._tasks,task) -- Stores task for later cleanup
 	end
+
 end
+
 function Maid:DoCleaning() -- Executes all cleanup tasks
 	for _,t in pairs(self._tasks) do
 		if typeof(t)=="RBXScriptConnection" then
@@ -36,32 +47,49 @@ function Maid:DoCleaning() -- Executes all cleanup tasks
 		elseif type(t)=="function" then
 			pcall(t) -- Safely calls functions
 		end
+
 	end
+
 	self._tasks={} -- Clears task list
 end
+
 local DragObject={} -- DragObject class for draggable parts
 DragObject.__index=DragObject -- Metatable setup
 function DragObject.new(part) -- Creates new DragObject from part
 	assert(part and part:IsA("BasePart"),"DragObject requires BasePart") -- Validates part type
 	local self=setmetatable({},DragObject) -- Creates new instance
+
 	self.Part=part -- Stores reference to the part
 	self.Maid=Maid.new() -- Creates cleanup manager for this object
 	self.Highlight=self:_createHighlight() -- Creates visual highlight
 	self.Highlight.Parent=nil -- Starts with highlight hidden
 	self.Enabled=false -- Tracks if object is currently active
+
 	self.ClickOffset=Vector3.new() -- Stores offset from click to part center
 	self.PartSize=part.Size -- Stores original part size
 	self.PartBottomOffset=Vector3.new(0,-part.Size.Y/2,0) -- Calculates bottom surface offset
 	return self
+
+
 end
+
+
 function DragObject:_createHighlight() -- Creates selection box visual
 	local h=Instance.new("SelectionBox") -- Creates new SelectionBox instance
+
+
 	h.Adornee=self.Part -- Sets the part to be highlighted
 	h.LineThickness=DragConfig.HighlightThickness -- Sets line thickness from config
 	h.Color3=DragConfig.HighlightColor -- Sets color from config
 	h.SurfaceTransparency=DragConfig.HighlightTransparency -- Sets transparency from config
 	return h
 end
+
+
+
+
+
+
 function DragObject:SetEnabled(enabled) -- Toggles highlight visibility
 	self.Enabled=enabled
 	if enabled then
@@ -69,18 +97,32 @@ function DragObject:SetEnabled(enabled) -- Toggles highlight visibility
 	else
 		self.Highlight.Parent=nil -- Hides highlight
 	end
+
+
+
+
+
 end
 function DragObject:SetCFrame(cf) -- Updates part position and rotation
 	self.Part.CFrame=cf
 end
+
+
+
 function DragObject:SetClickOffset(offset) -- Stores mouse click offset
 	self.ClickOffset=offset
 end
+
+
+
 function DragObject:Destroy() -- Cleans up object resources
 	self.Maid:DoCleaning() -- Executes all cleanup tasks
 	self.Part=nil -- Removes part reference
 	self.Highlight=nil -- Removes highlight reference
 end
+
+
+
 function DragObject:SnapToGrid(pos) -- Applies grid snapping to position
 	if DragConfig.SnapToGrid then
 		local size=DragConfig.GridSize -- Gets grid size from config
@@ -95,6 +137,9 @@ end
 function DragObject:GetTopPosition() -- Gets position of top surface
 	return self.Part.Position + Vector3.new(0,self.Part.Size.Y/2,0) -- Calculates top position
 end
+
+
+
 function DragObject:AlignToSurface(surfacePos) -- Positions part above a surface
 	self:SetCFrame(CFrame.new(surfacePos + Vector3.new(0,self.Part.Size.Y/2 + DragConfig.HeightOffset,0))) -- Sets position with height offset
 end
@@ -111,6 +156,10 @@ function DragObject:IsSelectable() -- Checks if part can be selected
 end
 function DragObject:ToggleHighlight() -- Toggles highlight on/off
 	self:SetEnabled(not self.Enabled) -- Inverts current enabled state
+
+
+
+
 end
 function DragObject:GetCFrame() -- Gets current position and rotation
 	return self.Part.CFrame
@@ -134,6 +183,9 @@ function DragObject:GetAnchored() -- Gets anchored state
 	return self.Part.Anchored
 end
 function DragObject:SetAnchored(state) -- Sets anchored state
+
+
+
 	self.Part.Anchored=state
 end
 function DragObject:GetTransparency() -- Gets transparency value
@@ -155,6 +207,9 @@ function DragController.new() -- Creates new drag controller
 	UserInputService.InputBegan:Connect(function(input) -- Listens for mouse click
 		if input.UserInputType==Enum.UserInputType.MouseButton1 then
 			self:_trySelect() -- Attempts to select part
+
+
+
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input) -- Listens for mouse release
@@ -162,6 +217,9 @@ function DragController.new() -- Creates new drag controller
 			self:_release() -- Releases dragged part
 		end
 	end)
+
+
+
 	RunService.RenderStepped:Connect(function() -- Runs every frame
 		self:_update() -- Updates drag position
 	end)
@@ -182,14 +240,20 @@ function DragController:_trySelect() -- Handles part selection
 		if player.Character then
 			for _, part in pairs(player.Character:GetDescendants()) do
 				if part:IsA("BasePart") then
+
 					local original=part.CanCollide -- Stores original collision state
 					self.Dragging.Maid:Give(function() part.CanCollide=original end) -- Schedules collision restoration
 					part.CanCollide=false -- Disables character part collisions
 				end
+
 			end
+
 		end
+
 	end
+
 end
+
 function DragController:_release() -- Releases dragged part
 	if self.Dragging then
 		self.Dragging:SetEnabled(false) -- Hides highlight
@@ -212,6 +276,10 @@ function DragController:_update() -- Updates drag position every frame
 		local ray=workspace:Raycast(camera.CFrame.Position,unitRay.Direction*DragConfig.MaxDistance,raycastParams) -- Casts ray into workspace
 		local hitPos
 		if ray then hitPos=ray.Position+Vector3.new(0,DragConfig.HeightOffset,0) else hitPos=camera.CFrame.Position+unitRay.Direction*DragConfig.MaxDistance end -- Uses hit point or max distance
+
+
+
+
 		local offset=hitPos-camera.CFrame.Position -- Calculates offset from camera
 		local dist=offset.Magnitude -- Gets distance from camera
 		if dist>DragConfig.MaxDistance then hitPos=camera.CFrame.Position+offset.Unit*DragConfig.MaxDistance -- Clamps to max distance
@@ -231,6 +299,11 @@ function DragController:Add(part) -- Adds part to drag system
 	return self.Objects[part] -- Returns existing object
 end
 function DragController:Remove(part) -- Removes part from drag system
+
+
+
+
+
 	local obj=self.Objects[part]
 	if obj then
 		obj:Destroy() -- Cleans up DragObject
@@ -276,6 +349,9 @@ function DragController:ToggleHighlights() -- Toggles all highlights
 		obj:ToggleHighlight() -- Toggles each object's highlight
 	end
 end
+
+
+
 function DragController:DestroyAll() -- Cleans up all drag objects
 	for _,obj in pairs(self.Objects) do
 		obj:Destroy() -- Destroys each DragObject
@@ -303,6 +379,9 @@ function DragController:ClonePart(part) -- Clones a specific part
 		local clone=part:Clone() -- Creates copy of part
 		clone.Parent=workspace -- Places in workspace
 		return self:Add(clone) -- Adds to drag system and returns
+
+
+
 	end
 end
 function DragController:CloneAllParts() -- Clones all managed parts
@@ -320,6 +399,9 @@ end
 function DragController:GetAllParts() -- Gets all managed parts
 	local parts={} -- Table for parts
 	for _,obj in pairs(self.Objects) do
+
+
+
 		table.insert(parts,obj.Part) -- Adds each part to table
 	end
 	return parts -- Returns parts table
@@ -337,6 +419,9 @@ function DragController:SortByHeight() -- Sorts parts by Y position
 	local list={} -- Temporary list
 	for _,obj in pairs(self.Objects) do
 		table.insert(list,obj.Part) -- Adds parts to list
+
+
+
 	end
 	table.sort(list,function(a,b) return a.Position.Y<b.Position.Y end) -- Sorts by Y coordinate
 	return list -- Returns sorted list
@@ -344,6 +429,9 @@ end
 function DragController:RemoveAllBaseplateParts() -- Removes all baseplates
 	for part,obj in pairs(self.Objects) do
 		if part.Name=="Baseplate" then
+
+
+
 			obj:Destroy() -- Destroys DragObject
 			self.Objects[part]=nil -- Removes from table
 		end
@@ -362,6 +450,9 @@ end
 function DragController:GetPartsInRegion(cframe,size) -- Gets parts within 3D region
 	local parts={} -- Result table
 	local region=Region3.new(cframe.Position-size/2,cframe.Position+size/2) -- Creates region
+
+
+
 	for _,obj in pairs(self.Objects) do
 		if obj:IsSelectable() then
 			if region:Contains(obj.Part.Position) then -- Checks if part is in region
@@ -372,6 +463,9 @@ function DragController:GetPartsInRegion(cframe,size) -- Gets parts within 3D re
 	return parts -- Returns parts in region
 end
 local core=DragController.new() -- Creates main controller instance
+
+
+
 DragSystem.Controller=core -- Exposes controller
 DragSystem.DragObject=DragObject -- Exposes DragObject class
 DragSystem.DragConfig=DragConfig -- Exposes configuration
